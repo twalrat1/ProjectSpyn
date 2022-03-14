@@ -24,10 +24,12 @@ while 1
         case 'l'
             brick.ResetMotorAngle('C');
             brick.MoveMotorAngleRel('C', 10, 45, 'Brake');
+            brick.WaitForMotor('C');
             pause(1);
         case 'd'
             brick.ResetMotorAngle('C');
             brick.MoveMotorAngleRel('C', -10, 45, 'Brake');
+            brick.WaitForMotor('C');
             pause(1);
         case 0
             brick.StopAllMotors('Coast');
