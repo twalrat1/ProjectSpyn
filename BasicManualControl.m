@@ -1,6 +1,13 @@
-%%%%  Sensor Ports  %%%%%
+%%%%  Keyboard Controls  %%%%%
+% Arrows for directional control
+% L to lift chair up
+% D to drop chair down
+
+%%%%  Motor Ports  %%%%%
 %A is left
 %B is right
+%C is chair lift
+%%%%  Sensor Ports  %%%%%
 %1 is distance sensor
 %4 is gyro
 
