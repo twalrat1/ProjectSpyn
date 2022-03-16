@@ -16,7 +16,7 @@
 %%% Begin Main Program %%%
 
 AutoNav(); % Get to Pick up location (Blue)- use arguments to indicate exit condition blue
-BasicManualControl(); % Pick Up Passenger
+ManualNav(); % Pick Up Passenger
 AutoNav(); % Get to Drop off location (Green)- use arguments to indicate exit condition green
-BasicManualControl(); % Drop off Passenger
+ManualNav(); % Drop off Passenger
 AutoNav(); % Get to End location (Yellow)- use arguments to indicate exit condition yellow
