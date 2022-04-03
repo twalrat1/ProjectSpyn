@@ -59,9 +59,9 @@ AutoNav(autoSpeed,turnSpeed,yellowSquare);
 
 function AutoNav(speed,turnSpeed,exitColor)
     %global brick;
-    exit = 0;
+    exitCode = 0;
     
-    while exit ~= 1 % Loop until exit condition- based on color code
+    while exitCode ~= 1 % Loop until exit condition- based on color code
         % Gather distances store in array
         getDistance();
         % Update maze map
@@ -69,7 +69,7 @@ function AutoNav(speed,turnSpeed,exitColor)
         % 1-MoveForward 2-TurnLeft 3-TurnRight 4-TurnAround
         decision = makeDecision();
         % execute action- check colors
-        exit = execute(decision,exitColor,speed,turnSpeed);
+        exitCode = execute(decision,exitColor,speed,turnSpeed);
     end
 return
 end
@@ -88,7 +88,7 @@ function code = execute(decision,exitColor,speed,turnSpeed)
             % Move Forward- do nothing here
         case 2
             % turnLeft
-            turn(-1*turnSpeed);
+            turn90(-1*turnSpeed);
         case 3
             % turnRight
             turn90(turnSpeed);
@@ -129,14 +129,13 @@ function code = execute(decision,exitColor,speed,turnSpeed)
 end
 
 function turn90(speed)
+    % experiment to find correct angle
     global brick rightMotor leftMotor turn90Angle wheelMotors;
     brick.ResetMotorAngle(rightMotor);
     brick.MoveMotorAngleAbs(leftMotor,speed,turn90Angle,'Brake');
     brick.MoveMotorAngleAbs(rightMotor,-1*speed,turn90Angle,'Brake');
     brick.WaitForMotor(wheelMotors);
     brick.StopAllMotors('Coast');
-    %brick.MoveMotor(leftMotor, speed);
-    %brick.MoveMotor(rightMotor, -1*speed);
 end
 
 function getDistance
@@ -158,31 +157,31 @@ function getDistance
 end
 
 function ManualNav(speed,offset,turnSpeed,liftSpeed)
-global key;
-InitKeyboard();
+    global key;
+    InitKeyboard();
 
-while key ~= 'q'
-    pause(0.1);
-    switch key
-        case 'uparrow'
-            move(speed,offset);
-        case 'downarrow'
-            move(-1*speed,-1*offset);
-        case 'rightarrow'
-            turn(turnSpeed);
-        case 'leftarrow'
-            turn(-1*turnSpeed);
-        case 's'
-            brick.StopAllMotors('Coast');
-        case 'l'
-            operateLift(liftSpeed);
-        case 'd'
-            operateLift(-1*liftSpeed);
-        case 0
-            brick.StopAllMotors('Coast');
+    while key ~= 'q'
+        pause(0.1);
+        switch key
+            case 'uparrow'
+                move(speed,offset);
+            case 'downarrow'
+                move(-1*speed,-1*offset);
+            case 'rightarrow'
+                turn(turnSpeed);
+            case 'leftarrow'
+                turn(-1*turnSpeed);
+            case 's'
+                brick.StopAllMotors('Coast');
+            case 'l'
+                operateLift(liftSpeed);
+            case 'd'
+                operateLift(-1*liftSpeed);
+            case 0
+                brick.StopAllMotors('Coast');
+        end
     end
-end
-CloseKeyboard();
+    CloseKeyboard();
 end
 
 function operateLift(speed)
