@@ -9,13 +9,14 @@ global color;       color = ones(1,colorSize);
 global colorAvg;    colorAvg = mode(color);
 global colorIx;     colorIx = 1;
 global liftAngle;   liftAngle = 20;
-global turn90Angle; turn90Angle = 90;
-global distSpeed;   distSpeed = 10;
+global turn90Angle; turn90Angle = 175;
+global distSpeed;   distSpeed = 30;
 global distance;    distance = zeros(1,3);
 global blueFound;   blueFound = 0;
 global greenFound;  greenFound = 0;
 global pickedUp;    pickedUp = 0;
 global droppedOff;  droppedOff = 0;
+global squareDist;  squareDist = 55;
 %global maze;        maze = graph;
 
 %%% Sensor & Motor Ports %%%
@@ -25,10 +26,11 @@ global wheelMotors; wheelMotors = 'AB';
 global liftMotor;   liftMotor = 'C';
 global distMotor;   distMotor = 'D';
 global distPort;    distPort = 1;
-global colorPort;   colorPort = 2;
+global colorPort;   colorPort = 4;
 
 %%% Local variables for AutoNav and ManNav functions %%%
 autoSpeed = 50;
+autoTurn = 40;
 manSpeed = 15;
 wheelOffset = 0;
 turnSpeed = 15;
@@ -47,17 +49,17 @@ yellowSquare = 4;
 brick.SetColorMode(colorPort,colorMode);
 
 % Autonomously navigate to Pick up location (Blue)
-AutoNav(autoSpeed,turnSpeed,blueSquare); 
+AutoNav(brick,autoSpeed,autoTurn,blueSquare); 
 % Pick Up Passenger- Remote Control
-ManualNav(manSpeed,wheelOffset,turnSpeed,liftSpeed); 
+ManualNav(brick,manSpeed,wheelOffset,turnSpeed,liftSpeed); 
 % Autonomously navigate to Drop off location (Green)
-AutoNav(autoSpeed,turnSpeed,greenSquare); 
+AutoNav(brick,autoSpeed,autoTurn,greenSquare); 
 % Drop Off Passenger- Remote Control
-ManualNav(manSpeed,wheelOffset,turnSpeed,liftSpeed); 
+ManualNav(brick,manSpeed,wheelOffset,turnSpeed,liftSpeed); 
 % Autonomously navigate to End location (Yellow)
-AutoNav(autoSpeed,turnSpeed,yellowSquare); 
+AutoNav(brick,autoSpeed,autoTurn,yellowSquare); 
 
-function AutoNav(speed,turnSpeed,exitColor)
+function AutoNav(brick,speed,turnSpeed,exitColor)
     %global brick;
     exitCode = 0;
     
@@ -69,9 +71,9 @@ function AutoNav(speed,turnSpeed,exitColor)
         % 1-MoveForward 2-TurnLeft 3-TurnRight 4-TurnAround
         decision = makeDecision();
         % execute action- check colors
-        exitCode = execute(decision,exitColor,speed,turnSpeed);
+        exitCode = execute(brick,decision,exitColor,speed,turnSpeed);
     end
-return
+    return
 end
 
 function decision = makeDecision
@@ -79,8 +81,8 @@ function decision = makeDecision
     return;
 end
 
-function code = execute(decision,exitColor,speed,turnSpeed)
-    global brick color colorPort colorSize colorIx distPort distance;
+function code = execute(brick,decision,exitColor,speed,turnSpeed)
+    global color colorPort colorSize colorIx distPort distance, squareDist;
     code = 0;
     
     switch decision
@@ -88,20 +90,24 @@ function code = execute(decision,exitColor,speed,turnSpeed)
             % Move Forward- do nothing here
         case 2
             % turnLeft
-            turn90(-1*turnSpeed);
+            turn90(brick,-1*turnSpeed);
         case 3
             % turnRight
-            turn90(turnSpeed);
+            turn90(brick,turnSpeed);
         case 4
             % turnAround = turnRight x2
-            turn90(turnSpeed);
-            turn90(turnSpeed);
+            turn90(brick,turnSpeed);
+            turn90(brick,turnSpeed);
         otherwise
             disp( 'no decision made' );
     end
+    
     % actually move forward- a turn is always followed by forward movement
-    move(speed,0);
-    targetDist = distance(1) - 50; % each square is app 50cm long
+    correction = 2;
+    targetDist = distance(1) - squareDist; % each square is app 50cm long
+    move(brick,speed,correction);
+    color = ones(1,3);
+    colorIx = 1;
     while distance(1) > targetDist %loop to move desired distance
         % Update color array as car is moving
         color(colorIx) = brick.ColorCode(colorPort);
@@ -120,26 +126,28 @@ function code = execute(decision,exitColor,speed,turnSpeed)
         if colorAvg == 5 % 5 = Red
             brick.StopAllMotors('Coast');
             pause(1);
-            move(speed,0);
+            move(brick,speed,correction);
+            color = ones(colorSize);
         end
+        pause(0.1);
         distance(1) = brick.UltrasonicDist(distPort);
     end
     
     return;
 end
 
-function turn90(speed)
-    % experiment to find correct angle
-    global brick rightMotor leftMotor turn90Angle wheelMotors;
+function turn90(brick,speed)
+    global rightMotor leftMotor turn90Angle;
     brick.ResetMotorAngle(rightMotor);
     brick.MoveMotorAngleAbs(leftMotor,speed,turn90Angle,'Brake');
+    brick.WaitForMotor(leftMotor);
     brick.MoveMotorAngleAbs(rightMotor,-1*speed,turn90Angle,'Brake');
-    brick.WaitForMotor(wheelMotors);
+    brick.WaitForMotor(rightMotor);
     brick.StopAllMotors('Coast');
 end
 
-function getDistance
-    global brick distPort distMotor distSpeed distance;
+function getDistance(brick)
+    global distPort distMotor distSpeed distance;
     % Forward dist
     brick.ResetMotorAngle(distMotor);
     distance(1) = brick.UltrasonicDist(distPort);
@@ -156,7 +164,7 @@ function getDistance
     brick.StopMotor(distMotor,'Coast');
 end
 
-function ManualNav(speed,offset,turnSpeed,liftSpeed)
+function ManualNav(brick,speed,offset,turnSpeed,liftSpeed)
     global key;
     InitKeyboard();
 
@@ -164,19 +172,19 @@ function ManualNav(speed,offset,turnSpeed,liftSpeed)
         pause(0.1);
         switch key
             case 'uparrow'
-                move(speed,offset);
+                move(brick,speed,offset);
             case 'downarrow'
-                move(-1*speed,-1*offset);
+                move(brick,-1*speed,-1*offset);
             case 'rightarrow'
-                turn(turnSpeed);
+                turn(brick,turnSpeed);
             case 'leftarrow'
-                turn(-1*turnSpeed);
+                turn(brick,-1*turnSpeed);
             case 's'
                 brick.StopAllMotors('Coast');
             case 'l'
-                operateLift(liftSpeed);
+                operateLift(brick,liftSpeed);
             case 'd'
-                operateLift(-1*liftSpeed);
+                operateLift(brick,-1*liftSpeed);
             case 0
                 brick.StopAllMotors('Coast');
         end
@@ -184,23 +192,22 @@ function ManualNav(speed,offset,turnSpeed,liftSpeed)
     CloseKeyboard();
 end
 
-function operateLift(speed)
-    global brick liftMotor liftAngle;
+function operateLift(brick,speed)
+    global liftMotor liftAngle;
     brick.ResetMotorAngle(liftMotor);
     brick.MoveMotorAngleRel(liftMotor, speed, liftAngle, 'Brake');
     brick.WaitForMotor(liftMotor);
     brick.StopAllMotors('Coast');
 end
 
-function move(speed,offset)
-    global brick rightMotor leftMotor; % wheelMotors;
-    % try brick.MoveMotor(wheelMotors,speed); to resolve drifting
+function move(brick,speed,offset)
+    global rightMotor leftMotor;
     brick.MoveMotor(leftMotor, speed+offset);
     brick.MoveMotor(rightMotor,speed);
 end
 
-function turn(speed)
-    global brick rightMotor leftMotor;
+function turn(brick,speed)
+    global rightMotor leftMotor;
     brick.MoveMotor(leftMotor, speed);
     brick.MoveMotor(rightMotor, -1*speed);
 end
