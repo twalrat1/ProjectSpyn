@@ -99,7 +99,7 @@ function decision = makeDecision
                 return
             else
                 % wall on right, ahead, and left = turn around
-                decision = 2;
+                decision = 4;
                 return;
             end
             
