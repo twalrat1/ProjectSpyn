@@ -17,7 +17,7 @@ global greenFound;  greenFound = 0;
 global pickedUp;    pickedUp = 0;
 global droppedOff;  droppedOff = 0;
 global squareDist;  squareDist = 57;
-global moveTime;    moveTime = 50;
+global moveTime;    moveTime = 13;
 %global maze;        maze = graph;
 
 %%% Sensor & Motor Ports %%%
@@ -38,7 +38,7 @@ global BLUE;        BLUE = 2;
 autoSpeed = 50;
 autoTurn = 40;
 manSpeed = 15;
-wheelOffset = 0;
+wheelOffset = 2;
 turnSpeed = 15;
 liftSpeed = 10;
 colorMode = 2;
@@ -109,10 +109,12 @@ end
 
 function code = execute(brick,decision,exitColor,speed,turnSpeed)
     global color colorPort colorSize colorIx distPort distance squareDist moveTime;
+    global wheelMotors;
     global RED GREEN BLUE blueFound greenFound;
     code = 0;
     
     disp('execution');
+    disp(decision);
     switch decision
         case 1
             % Move Forward- do nothing here
@@ -131,14 +133,16 @@ function code = execute(brick,decision,exitColor,speed,turnSpeed)
     end
     
     % actually move forward- a turn is always followed by forward movement
-    correction = 2;
     disp(distance(1));
     targetDist = distance(1) - squareDist; % each square is app 50cm long
-    move(brick,speed,correction);
+    disp(targetDist);
     color = ones(1,colorSize);
     colorIx = 1;
     timer = 0;
-    while (distance(1) > targetDist) && timer < moveTime %loop to move desired distance
+    correction = 3;
+    move(brick,speed,correction);
+    
+    while timer < moveTime %(distance(1) > targetDist)% || timer < moveTime %loop to move desired distance
         % Update color array as car is moving
         color(colorIx) = brick.ColorCode(colorPort);
         colorIx = colorIx + 1;
@@ -148,7 +152,8 @@ function code = execute(brick,decision,exitColor,speed,turnSpeed)
         colorAvg = mode(color);
         % check for Stop Sign
         if colorAvg == RED % 5 = Red
-            brick.StopAllMotors('Coast');
+            brick.StopMotor(wheelMotors,'Brake');
+            brick.StopMotor(wheelMotors,'Coast');
             pause(1);
             move(brick,speed,correction);
             color = ones(colorSize);
@@ -164,25 +169,34 @@ function code = execute(brick,decision,exitColor,speed,turnSpeed)
         % check for AutoNav exit condition
         if colorAvg == exitColor
             code = 1;
-            brick.StopAllMotors('Coast');
+            brick.StopMotor(wheelMotors,'Brake');
+            brick.StopMotor(wheelMotors,'Coast');
             return;
         end
         pause(0.1);
         timer = timer+1;
         distance(1) = brick.UltrasonicDist(distPort);
+        disp(distance(1));
     end
-    brick.StopAllMotors('Coast');
+    brick.StopMotor(wheelMotors,'Brake');
+    brick.StopMotor(wheelMotors,'Coast');
     return;
 end
 
+% function getCorrection(){
+%     global distance;
+%     
+% }
+
 function turn90(brick,speed)
-    global rightMotor leftMotor turn90Angle;
-    brick.ResetMotorAngle(rightMotor);
+    global rightMotor leftMotor turn90Angle wheelMotors;
+    brick.ResetMotorAngle(leftMotor);
     brick.MoveMotorAngleAbs(leftMotor,speed,turn90Angle,'Brake');
     brick.WaitForMotor(leftMotor);
+    brick.ResetMotorAngle(rightMotor);
     brick.MoveMotorAngleAbs(rightMotor,-1*speed,turn90Angle,'Brake');
     brick.WaitForMotor(rightMotor);
-    brick.StopAllMotors('Coast');
+    brick.StopMotor(wheelMotors,'Coast');
 end
 
 function getDistance(brick)
