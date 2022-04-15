@@ -18,6 +18,12 @@ global pickedUp;    pickedUp = 0;
 global droppedOff;  droppedOff = 0;
 global squareDist;  squareDist = 57;
 global moveTime;    moveTime = 13;
+global turnTime;    turnTime = 10;
+global mapDist;     mapDist = 100;
+global orientation; orientation = 1;  % 1-North 2-South 3-East 4-West
+global pos;         pos = [0,0];
+global autoOffset;  autoOffset = 2;
+global robotSq;     robotSq = 0;
 %global maze;        maze = graph;
 
 %%% Sensor & Motor Ports %%%
@@ -32,11 +38,13 @@ global RED;         RED = 5;
 global YELLOW;      YELLOW = 4;
 global GREEN;       GREEN = 3;
 global BLUE;        BLUE = 2;
-
+global YellowSq;
+global BlueSq;
+global GreenSq;
 
 %%% Local variables for AutoNav and ManNav functions %%%
 autoSpeed = 50;
-autoTurn = 40;
+autoTurn = 32;
 manSpeed = 15;
 wheelOffset = 2;
 turnSpeed = 15;
@@ -50,6 +58,8 @@ colorMode = 2;
 
 %%% Begin Main Program %%%
 brick.SetColorMode(colorPort,colorMode);
+createMap();
+[pos,posCheck] = setStart();
 
 % Autonomously navigate to Pick up location (Blue)
 AutoNav(brick,autoSpeed,autoTurn,BLUE); 
@@ -64,15 +74,19 @@ AutoNav(brick,autoSpeed,autoTurn,YELLOW);
 
 function AutoNav(brick,speed,turnSpeed,exitColor)
     exitCode = 0;
-    
+      
     while exitCode ~= 1 % Loop until exit condition- based on color code
         % Gather distances store in array
         getDistance(brick);
+        getCorrection();
+        
         % Update maze map
         % Decide next action- forward left right
         % 1-MoveForward 2-TurnLeft 3-TurnRight 4-TurnAround
         disp('make decision');
         decision = makeDecision();
+        changePosition
+        updateMap
         % execute action- check colors
         disp(decision);
         disp('execute decision');
@@ -81,11 +95,121 @@ function AutoNav(brick,speed,turnSpeed,exitColor)
     return
 end
 
+function updateMap
+    global orientation;
+    for i = 1:3
+        findPos(orientation);
+    end
+end
+
+function changePosition
+    global pos orientation mapDist;
+    switch(orientation)
+        case 1 % North
+            pos = [pos(1), pos(2) + mapDist];
+        case 3 % South
+            pos = [pos(1), pos(2) - mapDist];
+        case 2 % East
+            pos = [pos(1) + mapDist, pos(2)];
+        case 4 % West
+            pos = [pos(1) - mapDist, pos(2)];
+    end
+    refreshdata
+    drawnow
+end
+
+function createMap()
+hold on
+
+xlim([0,1000]);
+ylim([0,1200]);
+p = plot(xlim,ylim,'linestyle','none');
+axis equal;
+grid on
+updateData(3);
+end
+
+function findPos(dir)
+    global pos robotSq;
+    if robotSq ~= 0
+        delete( robotSq ); 
+    end
+    robotSq = rectangle('Position',[pos(1)+25 pos(2)+25 25 25]);
+    refreshdata
+    drawnow
+end
+
+function [pos, posCheck] = setStart()
+    global YellowSq;
+    pos = [400,600];
+    posCheck = 1;
+    YellowSq = rectangle('Position',[pos(1)+15 pos(2)+15 70 70],'FaceColor','y','LineStyle',':');
+    refreshdata
+    drawnow
+end
+
+function updateData(dir) %Update the map/figure with a new wall based off incoming distance reading
+    global pos mapDist;
+
+    p.XDataSource = 'x2';
+    p.YDataSource = 'y2';
+
+    %Direction should be 1,2,3,4 for north, south, east, or west
+  switch dir
+    case 1
+        x2 = [pos(1), pos(1) + mapDist];
+        y2 = [pos(2)+mapDist, pos(2) + mapDist];
+        line(x2,y2,'linestyle','-','Color','r');
+        refreshdata
+        drawnow
+    
+        disp("north")
+
+    case 3
+        x2 = [pos(1), pos(1) + mapDist];
+        y2 = [pos(2), pos(2)];
+        line(x2,y2,'linestyle','-','Color','r');
+        refreshdata
+        drawnow
+    
+        disp("south")
+
+    case 4
+        x2 = [pos(1), pos(1)];
+        y2 = [pos(2), pos(2)+mapDist];
+        line(x2,y2,'linestyle','-','Color','r');
+        refreshdata
+        drawnow
+    
+        disp("west")
+
+    case 2
+        x2 = [pos(1) + mapDist, pos(1) + mapDist];
+        y2 = [pos(2), pos(2) + mapDist];
+        line(x2,y2,'linestyle','-','Color','r');
+        refreshdata
+        drawnow
+    
+        disp("east")    
+
+    case 0
+        disp("Fail")
+
+  end
+
+    refreshdata
+    drawnow
+end
+
 function decision = makeDecision
-    global distance squareDist;
+    global distance squareDist orientation;
     if( distance(2) > squareDist )
         % No wall detected on right = turn right
         decision = 3;
+        orientation = orientation + 1;
+        if( orientation == 5 )
+            orientation = 1;
+        end
         return;
     else
         if( distance(1) > squareDist )
@@ -96,10 +220,20 @@ function decision = makeDecision
             if( distance(3) > squareDist )
                 % wall on right and ahead but not on left = turn left
                 decision = 2;
+                orientation = orientation - 1;
+                if( orientation == 0 )
+                    orientation = 4;
+                end
                 return
             else
                 % wall on right, ahead, and left = turn around
                 decision = 4;
+                orientation = orientation + 2;
+                if( orientation == 5 )
+                    orientation = 1;
+                elseif( orientation == 6 )
+                    orientation = 2;
+                end
                 return;
             end
             
@@ -109,8 +243,8 @@ end
 
 function code = execute(brick,decision,exitColor,speed,turnSpeed)
     global color colorPort colorSize colorIx distPort distance squareDist moveTime;
-    global wheelMotors;
-    global RED GREEN BLUE blueFound greenFound;
+    global wheelMotors autoOffset;
+    global RED GREEN BLUE blueFound greenFound BlueSq GreenSq pos;
     code = 0;
     
     disp('execution');
@@ -139,8 +273,7 @@ function code = execute(brick,decision,exitColor,speed,turnSpeed)
     color = ones(1,colorSize);
     colorIx = 1;
     timer = 0;
-    correction = 3;
-    move(brick,speed,correction);
+    move(brick,speed,autoOffset);
     
     while timer < moveTime %(distance(1) > targetDist)% || timer < moveTime %loop to move desired distance
         % Update color array as car is moving
@@ -152,24 +285,27 @@ function code = execute(brick,decision,exitColor,speed,turnSpeed)
         colorAvg = mode(color);
         % check for Stop Sign
         if colorAvg == RED % 5 = Red
-            brick.StopMotor(wheelMotors,'Brake');
+            %brick.StopMotor(wheelMotors,'Brake');
             brick.StopMotor(wheelMotors,'Coast');
             pause(1);
-            move(brick,speed,correction);
+            move(brick,speed,autoOffset);
             color = ones(colorSize);
+            rectangle('Position',[pos(1)+15 pos(2)+15 70 70],'FaceColor','r','LineStyle',':');
         end
         % Check if blue square is found
         if colorAvg == BLUE
             blueFound = 1;
+            BlueSq = rectangle('Position',[pos(1)+15 pos(2)+15 70 70],'FaceColor','b','LineStyle',':');
         end
         % Check if green square is found
         if colorAvg == GREEN
             greenFound = 1;
+            GreenSq = rectangle('Position',[pos(1) pos(2) 70 70],'FaceColor','g','LineStyle',':');
         end
         % check for AutoNav exit condition
         if colorAvg == exitColor
             code = 1;
-            brick.StopMotor(wheelMotors,'Brake');
+            %brick.StopMotor(wheelMotors,'Brake');
             brick.StopMotor(wheelMotors,'Coast');
             return;
         end
@@ -178,18 +314,37 @@ function code = execute(brick,decision,exitColor,speed,turnSpeed)
         distance(1) = brick.UltrasonicDist(distPort);
         disp(distance(1));
     end
-    brick.StopMotor(wheelMotors,'Brake');
+    %brick.StopMotor(wheelMotors,'Brake');
     brick.StopMotor(wheelMotors,'Coast');
     return;
 end
 
-% function getCorrection(){
-%     global distance;
-%     
-% }
+function getCorrection
+    global distance squareDist autoOffset;
+    left = distance(3);
+    right = distance(2);
+    
+    while left > squareDist
+        left = left - squareDist;
+    end
+    while right > squareDist
+        right = right - squareDist;
+    end
+    
+    center = (right - left) - 13;
+    
+    if center >=  5
+        autoOffset = autoOffset+1;
+    end
+    if center <= -5
+        autoOffset = autoOffset-1;
+    end
+    disp( autoOffset );
+   return;
+end
 
 function turn90(brick,speed)
-    global rightMotor leftMotor turn90Angle wheelMotors;
+    global rightMotor leftMotor turn90Angle wheelMotors direction;
     brick.ResetMotorAngle(leftMotor);
     brick.MoveMotorAngleAbs(leftMotor,speed,turn90Angle,'Brake');
     brick.WaitForMotor(leftMotor);
@@ -200,21 +355,40 @@ function turn90(brick,speed)
 end
 
 function getDistance(brick)
-    global distPort distMotor distSpeed distance;
+    global distPort distMotor distSpeed distance orientation squareDist;
     % Forward dist
     brick.ResetMotorAngle(distMotor);
     distance(1) = brick.UltrasonicDist(distPort);
+    if( distance(1) < squareDist )
+        updateData(orientation);
+    end
     % Right dist
     brick.MoveMotorAngleAbs(distMotor, distSpeed, 90, 'Brake');
     brick.WaitForMotor(distMotor);
     distance(2) = brick.UltrasonicDist(distPort);
+    o = orientation + 1;
+    if( o == 5 )
+        o = 1;
+    end
+    if( distance(2) < squareDist )
+        updateData(o);
+    end
     % Left dist
     brick.MoveMotorAngleAbs(distMotor, distSpeed, -90, 'Brake');
     brick.WaitForMotor(distMotor);
     distance(3) = brick.UltrasonicDist(distPort);
+    o = orientation - 1;
+    if( o == 0 )
+        o = 4;
+    end
+    if( distance(3) < squareDist )
+        updateData(o);
+    end
     brick.MoveMotorAngleAbs(distMotor, distSpeed, 0, 'Brake');
     brick.WaitForMotor(distMotor);
     brick.StopMotor(distMotor,'Coast');
+    global autoOffset;
+    disp(distance);
 end
 
 function ManualNav(brick,speed,offset,turnSpeed,liftSpeed)
