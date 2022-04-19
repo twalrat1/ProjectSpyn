@@ -9,8 +9,7 @@ function correctDistance(brick)
         
         correctAngle(brick);
         disp("A1");
-    end
- 
+        
     elseif(distance(1) > 45 && distance(1) < squareDist)
         brick.MoveMotor(leftMotor, adjSpeed);
         brick.MoveMotor(rightMotor, adjSpeed);
@@ -26,7 +25,7 @@ function correctDistance(brick)
         
         correctAngle(brick);
         disp("B1");
-    end
+        
     elseif(distance(2) > 45 && distance(2) < squareDist)
         turn90(brick, turnSpeed);
         move(brick,adjSpeed,autoOffset)
@@ -43,7 +42,7 @@ function correctDistance(brick)
         
         correctAngle(brick);
         disp("C1");
-    end
+        
     elseif(distance(3) > 45 && distance(3) < squareDist)
         turn90(brick, turnSpeed);
         move(brick,adjSpeed,autoOffset)
