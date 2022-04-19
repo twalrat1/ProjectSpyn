@@ -116,16 +116,10 @@ function correctAngle(brick)
     brick.MoveMotorAngleRel(rightMotor,speed, -1*angleRate);
     disp("------");
 end
-function correctDistance(brick) %%READ HERE speeds need to be tweaked, idk how brick moveMotor works
+function correctDistance(brick)
     global leftMotor rightMotor adjSpeed distance squareDist turnSpeed autoOffset;
     
     %call this function after taking distances but before decisionMaking
-
-    %Important
-    %%%%%%%%Below code would theoretically account for side wall distances,but might increase computation time
-    %^ Done with manual movement, assumes there is a golden 'range' of values we want the robot to be in
-    %In order for this to work, the movement in distance should never be more than the total area of the given
-    %range, which in our case is distances 28-40 away from any wall
 
     if(distance(1) < 28) %If too close to wall infront, move backwards slightly 
         brick.MoveMotor(leftMotor, -1*adjSpeed);
@@ -133,55 +127,48 @@ function correctDistance(brick) %%READ HERE speeds need to be tweaked, idk how b
         
         correctAngle(brick);
         disp("A1");
-    end
-    
-    %40 is the maximum possible distance it could read while still being valid, based off the distance from
-    %our ideal center to a corner wall. 34 accounts for some degree of error based off quarter distance.
-    if(distance(1) > 34 && distance(1) < squareDist) %If too far from wall infront, move forwards slightly
+        
+    elseif(distance(1) > 45 && distance(1) < squareDist)
         brick.MoveMotor(leftMotor, adjSpeed);
         brick.MoveMotor(rightMotor, adjSpeed);
         
         correctAngle(brick);
-        disp("B1");
+        disp("A2");
     end
     %------------------%
-%     if(distance(2) < 28+11)
-%         turn90(brick, -1*turnSpeed);
-%         move(brick,adjSpeed,autoOffset) %There shouldnt need to be an offset during these corrections, might need
-%         %to change this
-%         turn90(brick, turnSpeed);
-%         
-%         correctAngle(brick);
-%         disp("C1");
-%     end
-%     if(distance(2) > 34+11 && distance(2) < squareDist)
-%         turn90(brick, turnSpeed);
-%         move(brick,adjSpeed,autoOffset) %There shouldnt need to be an offset during these corrections, might need
-%         %to change this
-%         turn90(brick, -1*turnSpeed);
-%         
-%         correctAngle(brick);
-%         disp("D1");
-%     end
-%     %------------------%
-%     if(distance(3) < 28-11)
-%         turn90(brick, -1*turnSpeed);
-%         move(brick,adjSpeed,autoOffset) %There shouldnt need to be an offset during these corrections, might need
-%         %to change this
-%         turn90(brick, turnSpeed);
-%         
-%         correctAngle(brick);
-%         disp("E1");
-%     end
-%     if(distance(3) > 34-11 && distance(2) < squareDist)
-%         turn90(brick, turnSpeed);
-%         move(brick,adjSpeed,autoOffset) %There shouldnt need to be an offset during these corrections, might need
-%         %to change this
-%         turn90(brick, -1*turnSpeed);
-%         
-%         correctAngle(brick);
-%         disp("F1");
-%     end
+    if(distance(2) < 17)
+        turn90(brick, -1*turnSpeed);
+        move(brick,adjSpeed,autoOffset)
+        turn90(brick, turnSpeed);
+        
+        correctAngle(brick);
+        disp("B1");
+        
+    elseif(distance(2) > 45 && distance(2) < squareDist)
+        turn90(brick, turnSpeed);
+        move(brick,adjSpeed,autoOffset)
+        turn90(brick, -1*turnSpeed);
+        
+        correctAngle(brick);
+        disp("B2");
+    end
+    %------------------%
+    if(distance(3) < 17)
+        turn90(brick, -1*turnSpeed);
+        move(brick,adjSpeed,autoOffset)
+        turn90(brick, turnSpeed);
+        
+        correctAngle(brick);
+        disp("C1");
+        
+    elseif(distance(3) > 45 && distance(3) < squareDist)
+        turn90(brick, turnSpeed);
+        move(brick,adjSpeed,autoOffset)
+        turn90(brick, -1*turnSpeed);
+        
+        correctAngle(brick);
+        disp("C2");
+    end
     
 end
 
