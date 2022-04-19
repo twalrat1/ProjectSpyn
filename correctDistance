@@ -1,0 +1,56 @@
+function correctDistance(brick)
+    global leftMotor rightMotor adjSpeed distance squareDist turnSpeed autoOffset;
+    
+    %call this function after taking distances but before decisionMaking
+
+    if(distance(1) < 28) %If too close to wall infront, move backwards slightly 
+        brick.MoveMotor(leftMotor, -1*adjSpeed);
+        brick.MoveMotor(rightMotor, -1*adjSpeed);
+        
+        correctAngle(brick);
+        disp("A1");
+    end
+ 
+    elseif(distance(1) > 45 && distance(1) < squareDist)
+        brick.MoveMotor(leftMotor, adjSpeed);
+        brick.MoveMotor(rightMotor, adjSpeed);
+        
+        correctAngle(brick);
+        disp("A2");
+    end
+    %------------------%
+    if(distance(2) < 17)
+        turn90(brick, -1*turnSpeed);
+        move(brick,adjSpeed,autoOffset)
+        turn90(brick, turnSpeed);
+        
+        correctAngle(brick);
+        disp("B1");
+    end
+    elseif(distance(2) > 45 && distance(2) < squareDist)
+        turn90(brick, turnSpeed);
+        move(brick,adjSpeed,autoOffset)
+        turn90(brick, -1*turnSpeed);
+        
+        correctAngle(brick);
+        disp("B2");
+    end
+    %------------------%
+    if(distance(3) < 17)
+        turn90(brick, -1*turnSpeed);
+        move(brick,adjSpeed,autoOffset)
+        turn90(brick, turnSpeed);
+        
+        correctAngle(brick);
+        disp("C1");
+    end
+    elseif(distance(3) > 45 && distance(3) < squareDist)
+        turn90(brick, turnSpeed);
+        move(brick,adjSpeed,autoOffset)
+        turn90(brick, -1*turnSpeed);
+        
+        correctAngle(brick);
+        disp("C2");
+    end
+    
+end
