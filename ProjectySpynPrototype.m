@@ -22,9 +22,11 @@ global turnTime;    turnTime = 10;
 global mapDist;     mapDist = 100;
 global orientation; orientation = 1;  % 1-North 2-South 3-East 4-West
 global pos;         pos = [0,0];
-global autoOffset;  autoOffset = 2;
+global autoOffset;  autoOffset = 0;
 global robotSq;     robotSq = 0;
-global angleRate;  angleRate = 0;
+global angleRate;   angleRate = 0;
+global adjSpeed;    adjSpeed = 15;
+global turnSpeedC;  turnSpeedC = 15;
 %global maze;        maze = graph;
 
 %%% Sensor & Motor Ports %%%
@@ -51,7 +53,6 @@ wheelOffset = 2;
 turnSpeed = 15;
 liftSpeed = 10;
 colorMode = 2;
-adjSpeed = 10;
 
 % TODO:
 % Variables to store map information
@@ -63,6 +64,11 @@ brick.SetColorMode(colorPort,colorMode);
 createMap();
 [pos,posCheck] = setStart();
 brick.GyroCalibrate(2);   %this needs to be run once at the start and never more
+ang = brick.GyroAngle(2);
+while( ~(ang >= 0 || ang < 0) )
+    pause(1);
+    ang = brick.GyroAngle(2);
+end
 
 % Autonomously navigate to Pick up location (Blue)
 AutoNav(brick,autoSpeed,autoTurn,BLUE); 
@@ -81,16 +87,9 @@ function AutoNav(brick,speed,turnSpeed,exitColor)
     while exitCode ~= 1 % Loop until exit condition- based on color code
         % Gather distances store in array
         getDistance(brick);
-         
-        initialAngle = brick.GyroAngle(2);
-        %angleRate = brick.GyroRate(2);
-        
-        disp('Initial angle and angle rate:')
-        disp(initialAngle);
-        %disp(angleRate);
-         
-       %  correctDistance(brick);
-       % correctAngle(brick);
+        correctDistance(brick);
+        correctAngle(brick); 
+
  %       getCorrection();
         
         % Update maze map
@@ -104,70 +103,95 @@ function AutoNav(brick,speed,turnSpeed,exitColor)
         disp(decision);
         disp('execute decision');
         exitCode = execute(brick,decision,exitColor,speed,turnSpeed);
+        
     end
     return
 end
 function correctAngle(brick)
-    global leftMotor rightMotor speed angleRate;
-    
-    %Move the motors with rotations relative to the gyro angle, may need adjustments
-    disp(angleRate);
-    brick.MoveMotorAngleRel(leftMotor, speed, angleRate);
-    brick.MoveMotorAngleRel(rightMotor,speed, -1*angleRate);
-    disp("------");
+    global wheelMotors;
+    relAngle = brick.GyroAngle(2);
+    errAng = abs(relAngle) - 90;
+    while abs(errAng) <= 1
+        if( errAng > 0 )
+            turn(brick,-10);
+        else
+            turn(brick,10);
+        end
+        pause(0.1);
+        brick.StopMotor(wheelMotors,'Coast');
+        relAngle = brick.GyroAngle(2);
+        errAng = abs(relAngle) - 90;
+    end
 end
-function correctDistance(brick)
-    global leftMotor rightMotor adjSpeed distance squareDist turnSpeed autoOffset;
+function correctDistance(brick) %%READ HERE speeds need to be tweaked, idk how brick moveMotor works
+    global leftMotor rightMotor adjSpeed distance squareDist autoOffset wheelMotors;
     
     %call this function after taking distances but before decisionMaking
 
     if(distance(1) < 28) %If too close to wall infront, move backwards slightly 
         brick.MoveMotor(leftMotor, -1*adjSpeed);
         brick.MoveMotor(rightMotor, -1*adjSpeed);
-        
+        pause(0.7);
+        brick.StopMotor(wheelMotors);
         correctAngle(brick);
         disp("A1");
-        
-    elseif(distance(1) > 45 && distance(1) < squareDist)
+    end
+    
+    %40 is the maximum possible distance it could read while still being valid, based off the distance from
+    %our ideal center to a corner wall. 34 accounts for some degree of error based off quarter distance.
+    if(distance(1) > 45 && distance(1) < squareDist) %If too far from wall infront, move forwards slightly
         brick.MoveMotor(leftMotor, adjSpeed);
         brick.MoveMotor(rightMotor, adjSpeed);
-        
-        correctAngle(brick);
-        disp("A2");
-    end
-    %------------------%
-    if(distance(2) < 17)
-        turn90(brick, -1*turnSpeed);
-        move(brick,adjSpeed,autoOffset)
-        turn90(brick, turnSpeed);
-        
+        pause(0.7);
+        brick.StopMotor(wheelMotors);
         correctAngle(brick);
         disp("B1");
-        
-    elseif(distance(2) > 45 && distance(2) < squareDist)
-        turn90(brick, turnSpeed);
-        move(brick,adjSpeed,autoOffset)
-        turn90(brick, -1*turnSpeed);
-        
-        correctAngle(brick);
-        disp("B2");
     end
     %------------------%
-    if(distance(3) < 17)
-        turn90(brick, -1*turnSpeed);
-        move(brick,adjSpeed,autoOffset)
-        turn90(brick, turnSpeed);
+    if(distance(2) < 25)
+        turn90(brick, -1*adjSpeed);
+        move(brick,adjSpeed,autoOffset) %There shouldnt need to be an offset during these corrections, might need
+        pause(0.7);
+        brick.StopMotor(wheelMotors);
+        %to change this
+        turn90(brick, adjSpeed);
         
         correctAngle(brick);
         disp("C1");
-        
-    elseif(distance(3) > 45 && distance(3) < squareDist)
-        turn90(brick, turnSpeed);
-        move(brick,adjSpeed,autoOffset)
-        turn90(brick, -1*turnSpeed);
+    end
+    if(distance(2) > 45 && distance(2) < squareDist)
+        turn90(brick, adjSpeed);
+        move(brick,adjSpeed,autoOffset) %There shouldnt need to be an offset during these corrections, might need
+        %to change this
+        pause(0.7);
+        brick.StopMotor(wheelMotors);
+        turn90(brick, -1*adjSpeed);
         
         correctAngle(brick);
-        disp("C2");
+        disp("D1");
+    end
+    %------------------%
+    if(distance(3) < 25)
+        turn90(brick, -1*adjSpeed);
+        move(brick,adjSpeed,autoOffset) %There shouldnt need to be an offset during these corrections, might need
+        %to change this
+        pause(0.7);
+        brick.StopMotor(wheelMotors);
+        turn90(brick, adjSpeed);
+        
+        correctAngle(brick);
+        disp("E1");
+    end
+    if(distance(3) > 45 && distance(3) < squareDist)
+        turn90(brick, adjSpeed);
+        move(brick,adjSpeed,autoOffset) %There shouldnt need to be an offset during these corrections, might need
+        %to change this
+        pause(0.7);
+        brick.StopMotor(wheelMotors);
+        turn90(brick, -1*adjSpeed);
+        
+        correctAngle(brick);
+        disp("F1");
     end
     
 end
@@ -352,8 +376,8 @@ function code = execute(brick,decision,exitColor,speed,turnSpeed)
     timer = 0;
 
     while timer < moveTime %(distance(1) > targetDist)% || timer < moveTime %loop to move desired distance
-        correction = getCorrection(brick);
-        move(brick,speed,correction);
+        getCorrection(brick);
+        move(brick,speed,autoOffset);
         % Update color array as car is moving
         color(colorIx) = brick.ColorCode(colorPort);
         colorIx = colorIx + 1;
@@ -366,7 +390,7 @@ function code = execute(brick,decision,exitColor,speed,turnSpeed)
             %brick.StopMotor(wheelMotors,'Brake');
             brick.StopMotor(wheelMotors,'Coast');
             pause(1);
-            move(brick,speed,correction);
+            move(brick,speed,autoOffset);
             color = ones(colorSize);
             rectangle('Position',[pos(1)+15 pos(2)+15 70 70],'FaceColor','r','LineStyle',':');
         end
@@ -397,25 +421,22 @@ function code = execute(brick,decision,exitColor,speed,turnSpeed)
     return;
 end
 
-function correction = getCorrection(brick)
-    global distPort distance squareDist;
-    %left = distance(3);
-    distance(2) = brick.UltrasonicDist(distPort);
-    right = distance(2);
-    if( right < squareDist && right < 36 )
-        correction = 2;
-    elseif( right < squareDist && right > 36 )
-        correction = 4;
-    else
-        correction = 3;
-    end
-    disp(correction);
-    return;
+function getCorrection(brick)
+%     global distPort distance autoOffset;
+%     pre = distance(2);
+%     cur = brick.UltrasonicDist(distPort)
+%     err = cur - pre;
+%     distance(2) = cur;
+%     if( err < -.1 )
+%         autoOffset = autoOffset - 1;
+%     end
+%     if( err > .1 )
+%         autoOffset = autoOffset + 1;
+%     end
 end
 
 function turn90(brick,speed)
-    global rightMotor leftMotor turn90Angle wheelMotors direction;
-    startAngle = brick.GyroAngle(2);
+    global rightMotor leftMotor turn90Angle wheelMotors;
     brick.ResetMotorAngle(leftMotor);
     brick.MoveMotorAngleAbs(leftMotor,speed,turn90Angle,'Brake');
     brick.WaitForMotor(leftMotor);
@@ -423,15 +444,13 @@ function turn90(brick,speed)
     brick.MoveMotorAngleAbs(rightMotor,-1*speed,turn90Angle,'Brake');
     brick.WaitForMotor(rightMotor);
     brick.StopMotor(wheelMotors,'Coast');
-    relAngle = brick.GyroAngle(2)-startAngle;
-    if( abs(relAngle) 
-    
+    correctAngle(brick);
 end
 
 function getDistance(brick)
     global distPort distMotor distSpeed distance orientation squareDist;
     % Right dist
-
+    brick.GyroCalibrate(2);
     brick.ResetMotorAngle(distMotor);
     distance(2) = brick.UltrasonicDist(distPort);
     o = orientation + 1;
@@ -448,8 +467,6 @@ function getDistance(brick)
     if( distance(1) < squareDist )
         updateData(orientation);
     end
-
-    
     
     % Left dist
     brick.MoveMotorAngleAbs(distMotor, distSpeed, -180, 'Brake');
