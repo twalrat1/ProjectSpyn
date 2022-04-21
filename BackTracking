@@ -2,7 +2,7 @@
 global blueLocation; blueLocation = 100;
 global yellowLocation; yellowLocation = 1;
 global greenLocation; greenLocation = 100;
-global targetLocation; targetLocation = 1;
+global targetLocation; targetLocation = 100;
 global robotLocation; robotLocation = 1;
 global pathLength; pathLength = 0;
 global arrayUp;
@@ -14,10 +14,23 @@ global up;      up = 'u';
 global down;    down = 'd';
 global left;    left = 'l';
 global right;   right = 'r';
-global A;
+global A;       %Array A
+global BMatrix; %Array B
+global B;       B = 100;
+global C;
+global Y;       Y = 1;
+global G;       G = 100;
+
+
+global path;    path = "";
+
 
 A = zeros(12);
 A(6,6) = 1;     %Starting position/yellowLocation in array = 1  
+
+BMatrix = zeros(12);
+
+C = {66, 67};
 
 %Value of indexed location in that direction
 arrayUp = robotLocation + 10;
@@ -27,45 +40,32 @@ arrayLeft = robotLocation - 1;
 %Define starting index of robotLocation value
 robotIndex = find(A == robotLocation);
 
-disp(A);
-disp(robotIndex);
+generatePaths();
 
-function findColor(color)
-    global blueLocation yellowLocation greenLocation A;
-    
-    switch color
-        case 1
-            blueLocation = find(A == 100);
-            backtrack(blueLocation)
-        case 2
-            yellowLocation = find(A == 1);
-            backtrack(yellowLocation)
-        case 3
-            greenLocation = find(A == 100);
-            backtrack(greenLocation)
-    end
-end
-function generateWalls(dir) %Feed this into the distanceScanner
-    global A;
+% disp(A);
+% disp(robotIndex);
+
+function generateWalls(dir)
+    global A robotLocation robotIndex;
     
     switch dir
         case 1
-            robotIndex = find(A == robotLocation);
+            robotIndex = find(A == robotLocation);      %Forward
             A(robotIndex + 12) = 99;
-        case 2
-            robotIndex = find(A == robotLocation);
-            A(robotIndex - 1) = 99;
-        case 3
-            robotIndex = find(A == robotLocation);
-            A(robotIndex + 1) = 99;
         case 4
-            robotIndex = find(A == robotLocation);
+            robotIndex = find(A == robotLocation);      %Left
+            A(robotIndex - 1) = 99;
+        case 2
+            robotIndex = find(A == robotLocation);      %Right
+            A(robotIndex + 1) = 99;
+        case 3
+            robotIndex = find(A == robotLocation);      %Down
             A(robotIndex - 12) = 99;
         case 0
             disp('fail wall');
     end
 end
-function createPath(decision) %Feed this function into makeDecision to update the array
+function createPath(decision)
     global robotIndex robotLocation arrayUp arrayDown arrayLeft arrayRight A;
     
     switch decision %Redefines locations relative to array location with +/- 10,+/- 1
@@ -101,18 +101,99 @@ function createPath(decision) %Feed this function into makeDecision to update th
 end
 
 function generatePaths()
-    global robotIndex robotLocation targetLocation arrayUp arrayDown arrayLeft arrayRight up down left right A;
+    global robotIndex robotLocation targetLocation arrayUp arrayDown arrayLeft arrayRight up down left right A BMatrix C path;
     
     robotIndex = find(A == robotLocation);
     
-    %consider shortestPath algorithm while excluding values of 99 (walls) ?
+    while(robotLocation ~= targetLocation)
+        if (isempty(C))
+            disp('Empty')
+
+            return;
+        else
+            nextNode = C{1,1};
+            row = 1 + idivide(cast(nextNode,"uint8"), 12);
+            column = mod(nextNode, 12);
+
+                if nextNode - 12 >= 0
+                    if BMatrix(row,column) == 0
+                        BMatrix(row, column) = 1;
+                        C{1,end + 1} = nextNode - 12;
+                        if (targetLocation == nextNode -12)
+                            break;
+                        end
+                        disp(BMatrix(row, column));
+                    end
+                end
+                if (nextNode + 12 <= 144)
+                    if BMatrix(row,column) == 0
+                        BMatrix(row, column) = 3;
+                        C{1,end + 1} = nextNode + 12;
+                        if (targetLocation == nextNode +12)
+                            break;
+                        end
+                        disp(BMatrix(row, column));
+                    end
+                end
+                if (nextNode - 1 >= 0)
+                    if BMatrix(row,column) == 0
+                        BMatrix(row, column) = 4;
+                        C{1,end + 1} = nextNode - 1;
+                        if (targetLocation == nextNode -1)
+                            break;
+                        end
+                        disp(BMatrix(row, column));
+                    end
+                end
+                if (nextNode + 1 <= 144)
+                    if BMatrix(row,column) == 0
+                        BMatrix(row, column) = 2;
+                        C{1,end + 1} = nextNode +1;
+                        if (targetLocation == nextNode +1)
+                            break;
+                        end
+                        disp(BMatrix(row, column));
+                    end
+                end
+
+            C = C{1,2:end};
+            break;
+        end
+    end
+
+    row = 1 + idivide(cast(targetLocation,"uint8"), 12);
+    column = mod(targetLocation, 12);
+    robotRow = 1 + idivide(cast(robotLocation,"uint8"), 12);
+    robotColumn = mod(robotLocation, 12);
+
+    while true
+        path = BMatrix(row, column) + path;
+        direction = BMatrix(row,column);
+        if row == robotRow && column == robotColumn
+            break;
+        end
+        if direction == 1
+            row = row - 1;
+        elseif direction == 2
+            column = column - 1;
+        elseif direction == 3
+            row = row + 1;
+        else
+            column = column + 1;
+        end
+    end
     
+    disp(path);
+            
+
 %     while(robotLocation ~= targetLocation)
 %             if(isMember(arrayUp))
 %                 possibility = strcat(possibility, up);
 %                 robotLocation = arrayUp;
 %                 break;
 %             elseif(isMember(arrayDown))
+%                 ch(2) = 1;
+%                 ct = ct + 1;
 %             elseif(isMember(arrayLeft))
 %             elseif(isMember(arrayRight))
 %             end
@@ -122,6 +203,7 @@ end
 function backTrack(targetLocation)
     global robotLocation targetLocation arrayUp arrayDown arrayLeft arrayRight pathLength A;
 
+    path = generatePaths();
     %call generatePaths() which should return the shortest path as a string
     %decipher shortest path string 'UUDDLLRR' into robot movement (up up down down left ....)
 end
