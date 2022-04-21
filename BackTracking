@@ -1,0 +1,127 @@
+%variables
+global blueLocation; blueLocation = 100;
+global yellowLocation; yellowLocation = 1;
+global greenLocation; greenLocation = 100;
+global targetLocation; targetLocation = 1;
+global robotLocation; robotLocation = 1;
+global pathLength; pathLength = 0;
+global arrayUp;
+global arrayRight;
+global arrayDown;
+global arrayLeft;
+global robotIndex;
+global up;      up = 'u';
+global down;    down = 'd';
+global left;    left = 'l';
+global right;   right = 'r';
+global A;
+
+A = zeros(12);
+A(6,6) = 1;     %Starting position/yellowLocation in array = 1  
+
+%Value of indexed location in that direction
+arrayUp = robotLocation + 10;
+arrayRight = robotLocation + 1;
+arrayDown = robotLocation - 10;
+arrayLeft = robotLocation - 1;
+%Define starting index of robotLocation value
+robotIndex = find(A == robotLocation);
+
+disp(A);
+disp(robotIndex);
+
+function findColor(color)
+    global blueLocation yellowLocation greenLocation A;
+    
+    switch color
+        case 1
+            blueLocation = find(A == 100);
+            backtrack(blueLocation)
+        case 2
+            yellowLocation = find(A == 1);
+            backtrack(yellowLocation)
+        case 3
+            greenLocation = find(A == 100);
+            backtrack(greenLocation)
+    end
+end
+function generateWalls(dir) %Feed this into the distanceScanner
+    global A;
+    
+    switch dir
+        case 1
+            robotIndex = find(A == robotLocation);
+            A(robotIndex + 12) = 99;
+        case 2
+            robotIndex = find(A == robotLocation);
+            A(robotIndex - 1) = 99;
+        case 3
+            robotIndex = find(A == robotLocation);
+            A(robotIndex + 1) = 99;
+        case 4
+            robotIndex = find(A == robotLocation);
+            A(robotIndex - 12) = 99;
+        case 0
+            disp('fail wall');
+    end
+end
+function createPath(decision) %Feed this function into makeDecision to update the array
+    global robotIndex robotLocation arrayUp arrayDown arrayLeft arrayRight A;
+    
+    switch decision %Redefines locations relative to array location with +/- 10,+/- 1
+        case 1
+            robotIndex = find(A == robotLocation);
+            if(A(robotIndex + 12) ~= 99)
+                %Set array point above to new value
+                A(robotIndex + 12) = arrayUp; %robotIndex + 12 == index 1 row above
+                %Set current location to new value index
+                robotLocation = A(robotIndex + 12);
+            end
+        case 2
+            robotIndex = find(A == robotLocation);
+            if(A(robotIndex - 1) ~= 99)
+                A(robotIndex - 1) = arrayLeft;
+                robotLocation = A(robotIndex + -1);
+            end
+        case 3
+            robotIndex = find(A == robotLocation);
+            if(A(robotIndex + 1) ~= 99)
+                A(robotIndex + 1) = arrayRight;
+                robotLocation = A(robotIndex + 1);
+            end
+        case 4
+            robotIndex = find(A == robotLocation);
+            if(A(robotIndex - 12) ~= 99)
+                A(robotIndex - 12) = arrayDown;
+                robotLocation = A(robotIndex - 12);
+            end
+        case 0
+            disp('fail path');
+    end
+end
+
+function generatePaths()
+    global robotIndex robotLocation targetLocation arrayUp arrayDown arrayLeft arrayRight up down left right A;
+    
+    robotIndex = find(A == robotLocation);
+    
+    %consider shortestPath algorithm while excluding values of 99 (walls) ?
+    
+%     while(robotLocation ~= targetLocation)
+%             if(isMember(arrayUp))
+%                 possibility = strcat(possibility, up);
+%                 robotLocation = arrayUp;
+%                 break;
+%             elseif(isMember(arrayDown))
+%             elseif(isMember(arrayLeft))
+%             elseif(isMember(arrayRight))
+%             end
+%     end
+    
+end
+function backTrack(targetLocation)
+    global robotLocation targetLocation arrayUp arrayDown arrayLeft arrayRight pathLength A;
+
+    %call generatePaths() which should return the shortest path as a string
+    %decipher shortest path string 'UUDDLLRR' into robot movement (up up down down left ....)
+end
