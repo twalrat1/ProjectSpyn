@@ -1,5 +1,5 @@
 %%%%% ProjectSpyn %%%%%
-% Version 2.0
+% Version 1.1
 % ASU FSE100 Section: 16722
 % Spring 2022
 % Adam Colyar, Aryan Hiteshkumar, Rishikumar Senthilvel, Trevor Walrath
@@ -20,7 +20,7 @@ global greenFound;  greenFound = 0;
 global pickedUp;    pickedUp = 0;
 global droppedOff;  droppedOff = 0;
 global squareDist;  squareDist = 57;
-global moveTime;    moveTime = 8;
+global moveTime;    moveTime = 12;
 global turnTime;    turnTime = 10;
 global mapDist;     mapDist = 100;
 global orientation; orientation = 1;  % 1-North 2-South 3-East 4-West
@@ -164,7 +164,7 @@ function correctDistance(brick)
         disp("A1");
     end
     
-    if(distance(1) > 50 && distance(1) < squareDist+10) %If too far from wall infront, move forwards slightly
+    if(distance(1) > 50 && distance(1) < squareDist) %If too far from wall infront, move forwards slightly
         brick.MoveMotor(leftMotor, adjSpeed);
         brick.MoveMotor(rightMotor, adjSpeed);
         pause(0.7);
@@ -384,6 +384,7 @@ function code = execute(brick,decision,exitColor,speed,turnSpeed)
     global wheelMotors autoOffset;
     global RED GREEN BLUE blueFound greenFound BlueSq GreenSq pos;
     code = 0;
+    initSpeed = speed;
     
     disp('execution');
     disp(decision);
@@ -418,9 +419,13 @@ function code = execute(brick,decision,exitColor,speed,turnSpeed)
 
     while timer < moveTime %(distance(1) > targetDist)% || timer < moveTime %loop to move desired distance
         getCorrection(brick);
+        speed = initSpeed - exp(.50*timer);
+        if(speed < 10)
+            speed = 10;
+        end
         move(brick,speed,autoOffset);
         % Update color array as car is moving
-        disp(autoOffset);
+        disp(speed);
         colorIx = colorIx + 1;
         if( colorIx == (colorSize+1) )
             colorIx = 1; % keep index within bounds >=1 & <=3
@@ -454,6 +459,7 @@ function code = execute(brick,decision,exitColor,speed,turnSpeed)
             return;
         end
         pause(0.1);
+       
         timer = timer+1;
 %         distance(1) = brick.UltrasonicDist(distPort);
 %         disp(distance(1));
@@ -567,7 +573,7 @@ function getDistance(brick)
     brick.MoveMotorAngleAbs(distMotor, distSpeed, 0, 'Brake');
     brick.WaitForMotor(distMotor);
     brick.StopMotor(distMotor,'Coast');
-
+    
     disp(distance);
     colorAvg = mode(color);
 end
